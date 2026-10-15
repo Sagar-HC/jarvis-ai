@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         String        @default("USER")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tasks        Task[]
+  devices      Device[]
+  integrations Integration[]
+  memories     MemoryRecord[]
+  schedules    ScheduledJob[]
+  approvals    ApprovalRequest[]
+  auditLogs    AuditLog[]
+}
+
+model Task {
+  id                  String             @id @default(uuid())
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalRequest     String
+  normalizedObjective String
+  successCriteria     String             // JSON string
+  status              String             @default("RECEIVED")
+  currentStepId       String?
+  riskLevel           Int                @default(0)
+  priority            String             @default("NORMAL")
+  retryCount          Int                @default(0)
+  maxRetries          Int                @default(2)
+  lastError           String?
+  checkpointData      String?            // JSON serialized snapshot
+  completedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  steps               TaskStep[]
+  actionResults       ActionResult[]
+  verifications       VerificationVerdict[]
+  approvals           ApprovalRequest[]
+  auditLogs           AuditLog[]
+}
+
+model TaskStep {
+  id                 String             @id @default(uuid())
+  taskId             String
+  task               Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stepIndex          Int
+  title              String
+  capability         String
+  toolName           String
+  inputData          String             // JSON serialized
+  status             String             @default("PENDING")
+  riskLevel          Int                @default(0)
+  preconditions      String?
+  postconditions     String?
+  verificationMethod String?
+  timeoutMs          Int                @default(30000)
+  retryPolicy        String?            // JSON
+  dependencies       String?            // JSON array of prerequisite stepIds
+  resultData         String?            // JSON
+  errorMessage       String?
+  evidence           String?            // JSON array
+  startedAt          DateTime?
+  completedAt        DateTime?
+  actionResults      ActionResult[]
+  verifications      VerificationVerdict[]
+  approvals          ApprovalRequest[]
+}
+
+model ActionResult {
+  id                    String    @id @default(uuid())
+  taskId                String
+  task                  Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stepId                String
+  step                  TaskStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  toolName              String
+  status                String    // SUCCESS | FAILURE | UNKNOWN
+  actionTaken           String
+  expectedPostcondition String
+  actualOutcome         String?
+  evidence              String    // JSON array
+  affectedResources     String    // JSON array
+  errorType             String?
+  retryable             Boolean   @default(false)
+  nextAction            String?
+  executedAt            DateTime  @default(now())
+}
+
+model VerificationVerdict {
+  id         String    @id @default(uuid())
+  taskId     String
+  task       Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stepId     String
+  step       TaskStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  verdict    String    // VERIFIED_SUCCESS | VERIFIED_PARTIAL_SUCCESS | RETRYABLE_FAILURE | NON_RETRYABLE_FAILURE | OUTCOME_UNKNOWN | BLOCKED_BY_PERMISSION | REQUIRES_USER_DECISION
+  score      Float     @default(1.0)
+  reasoning  String
+  evidence   String    // JSON array
+  verifiedAt DateTime  @default(now())
+}
+
+model ApprovalRequest {
+  id                String    @id @default(uuid())
+  taskId            String
+  task              Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stepId            String
+  step              TaskStep  @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskLevel         Int
+  actionDescription String
+  toolName          String
+  proposedParams    String    // JSON
+  status            String    @default("PENDING") // PENDING | APPROVED | REJECTED | EXPIRED
+  requestedAt       DateTime  @default(now())
+  respondedAt       DateTime?
+  respondedBy       String?
+  notes             String?
+}
+
+model Device {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId         String           @unique
+  deviceName       String
+  deviceType       String           // DESKTOP | MOBILE | SERVER | BROWSER
+  capabilities     String           // JSON array
+  connectionStatus String           @default("OFFLINE") // ONLINE | OFFLINE | BUSY
+  lastHeartbeat    DateTime         @default(now())
+  activeLeaseId    String?
+  isAuthorized     Boolean          @default(true)
+  registeredAt     DateTime         @default(now())
+}
+
+model ExecutionLease {
+  id         String    @id @default(uuid())
+  taskId     String
+  stepId     String?
+  deviceId   String
+  workerId   String
+  leaseToken String    @unique
+  leasedAt   DateTime  @default(now())
+  expiresAt  DateTime
+  status     String    @default("ACTIVE") // ACTIVE | RELEASED | EXPIRED
+}
+
+model Integration {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String    // GOOGLE_CALENDAR | GMAIL | GITHUB | WEB_SEARCH | SLACK | NOTION | FILESYSTEM
+  name         String
+  status       String    @default("DISCONNECTED") // CONNECTED | DISCONNECTED | ERROR
+  isSimulated  Boolean   @default(false)
+  capabilities String    // JSON array
+  config       String?   // JSON
+  authDetails  String?   // JSON (encrypted)
+  lastSync     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model MemoryRecord {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     String    // PREFERENCE | PROJECT_CONTEXT | HISTORICAL_RESULT | CAPABILITY_METADATA
+  key          String
+  value        String
+  source       String?
+  confidence   Float     @default(1.0)
+  userApproved Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ScheduledJob {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  cronExpression  String
+  naturalSchedule String
+  taskTemplate    String    // JSON
+  status          String    @default("ACTIVE") // ACTIVE | PAUSED | CANCELLED
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  taskId    String?
+  task      Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  eventType String
+  details   String    // JSON
+  riskLevel Int       @default(0)
+  ipAddress String?
+  timestamp DateTime  @default(now())
+}
