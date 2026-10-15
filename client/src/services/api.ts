@@ -131,9 +131,49 @@ export interface AuditItem {
   timestamp: string;
 }
 
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  attendees: string[];
+  description?: string;
+  createdAt: string;
+}
+
+export interface EmailItem {
+  id: string;
+  from: string;
+  to: string[];
+  subject: string;
+  snippet: string;
+  body: string;
+  unread: boolean;
+  receivedAt: string;
+}
+
 export const api = {
-  async getHealth() {
-    const res = await fetch(`${BASE_URL}/health`);
+  async getCalendarEvents(): Promise<CalendarEvent[]> {
+    const res = await fetch(`${BASE_URL}/calendar/events`);
+    return res.json();
+  },
+
+  async createCalendarEvent(event: { title: string; startTime: string; endTime: string; attendees?: string[]; description?: string }): Promise<CalendarEvent> {
+    const res = await fetch(`${BASE_URL}/calendar/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    });
+    return res.json();
+  },
+
+  async deleteCalendarEvent(id: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/calendar/events/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  async getEmails(): Promise<EmailItem[]> {
+    const res = await fetch(`${BASE_URL}/emails`);
     return res.json();
   },
 
@@ -190,6 +230,22 @@ export const api = {
 
   async getIntegrations(): Promise<IntegrationItem[]> {
     const res = await fetch(`${BASE_URL}/integrations`);
+    return res.json();
+  },
+
+  async connectIntegration(id: string, config: any): Promise<{ success: boolean; message?: string }> {
+    const res = await fetch(`${BASE_URL}/integrations/${id}/connect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    return res.json();
+  },
+
+  async disconnectIntegration(id: string): Promise<{ success: boolean; message?: string }> {
+    const res = await fetch(`${BASE_URL}/integrations/${id}/disconnect`, {
+      method: 'POST'
+    });
     return res.json();
   },
 

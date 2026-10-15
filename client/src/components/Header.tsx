@@ -16,12 +16,13 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const tabs = [
     { id: 'tasks', label: 'Tasks', icon: Terminal },
+    { id: 'calendar', label: 'Calendar & Meetings', icon: Calendar },
     { id: 'approvals', label: 'Approvals', icon: ShieldCheck, badge: pendingApprovalsCount },
     { id: 'integrations', label: 'Integrations', icon: CheckCircle2 },
     { id: 'devices', label: 'Devices', icon: HardDrive },
     { id: 'memory', label: 'Memory', icon: Brain },
-    { id: 'schedules', label: 'Schedules', icon: Calendar },
-    { id: 'audit', label: 'Audit & Metrics', icon: Clock }
+    { id: 'schedules', label: 'Schedules', icon: Clock },
+    { id: 'audit', label: 'Audit & Metrics', icon: Terminal }
   ];
 
   return (

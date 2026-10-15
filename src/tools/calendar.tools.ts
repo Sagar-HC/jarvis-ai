@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ToolDefinition, RiskLevel, VerificationVerdictType } from '../core/types';
 
 // In-memory / persisted calendar store for zero-setup execution
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   title: string;
   startTime: string; // ISO
@@ -12,7 +12,7 @@ interface CalendarEvent {
   createdAt: string;
 }
 
-const localCalendarEvents: CalendarEvent[] = [
+export const localCalendarEvents: CalendarEvent[] = [
   {
     id: 'evt-1',
     title: 'Sprint Planning',

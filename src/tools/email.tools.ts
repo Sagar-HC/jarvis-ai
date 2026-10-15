@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolDefinition, RiskLevel, VerificationVerdictType } from '../core/types';
 
-interface EmailMessage {
+export interface EmailMessage {
   id: string;
   from: string;
   to: string[];
@@ -12,7 +12,7 @@ interface EmailMessage {
   receivedAt: string;
 }
 
-const localEmailInbox: EmailMessage[] = [
+export const localEmailInbox: EmailMessage[] = [
   {
     id: 'msg-101',
     from: 'sarah.engineering@company.com',

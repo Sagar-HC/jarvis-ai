@@ -6,6 +6,8 @@ import { IntegrationManager } from '../../integrations/base.connector';
 import { EventBroadcaster } from '../events';
 import { SchedulerEngine } from '../../core/scheduler';
 import { IModelProvider } from '../../providers/model.provider';
+import { localCalendarEvents } from '../../tools/calendar.tools';
+import { localEmailInbox } from '../../tools/email.tools';
 
 export function createApiRouter(
   orchestrator: JarvisOrchestrator,
@@ -144,6 +146,28 @@ export function createApiRouter(
         return res.status(404).json({ error: `Integration provider '${req.params.id}' not found.` });
       }
       const result = await connector.connect(req.body);
+
+      // Persist status and config in database
+      await prisma.integration.upsert({
+        where: { id: `${req.user!.userId}_${req.params.id}` },
+        update: {
+          status: result.success ? 'CONNECTED' : 'ERROR',
+          isSimulated: connector.isSimulated,
+          config: JSON.stringify(req.body),
+          lastSync: new Date()
+        },
+        create: {
+          id: `${req.user!.userId}_${req.params.id}`,
+          userId: req.user!.userId,
+          provider: req.params.id,
+          name: connector.name,
+          status: result.success ? 'CONNECTED' : 'ERROR',
+          isSimulated: connector.isSimulated,
+          capabilities: JSON.stringify(connector.getCapabilities()),
+          config: JSON.stringify(req.body)
+        }
+      });
+
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -157,10 +181,53 @@ export function createApiRouter(
         return res.status(404).json({ error: `Integration provider '${req.params.id}' not found.` });
       }
       await connector.disconnect();
+
+      await prisma.integration.updateMany({
+        where: { userId: req.user!.userId, provider: req.params.id },
+        data: { status: 'DISCONNECTED' }
+      });
+
       res.json({ success: true, message: `Disconnected provider '${req.params.id}'.` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // 4b. CALENDAR
+  router.get('/calendar/events', (_req: AuthenticatedRequest, res: Response) => {
+    res.json(localCalendarEvents);
+  });
+
+  router.post('/calendar/events', (req: AuthenticatedRequest, res: Response) => {
+    const { title, startTime, endTime, attendees, description } = req.body;
+    if (!title || !startTime || !endTime) {
+      return res.status(400).json({ error: 'title, startTime, and endTime are required.' });
+    }
+    const newEvent = {
+      id: `evt-${Date.now()}`,
+      title,
+      startTime,
+      endTime,
+      attendees: Array.isArray(attendees) ? attendees : [],
+      description: description || '',
+      createdAt: new Date().toISOString()
+    };
+    localCalendarEvents.push(newEvent);
+    res.status(201).json(newEvent);
+  });
+
+  router.delete('/calendar/events/:id', (req: AuthenticatedRequest, res: Response) => {
+    const idx = localCalendarEvents.findIndex(e => e.id === req.params.id);
+    if (idx !== -1) {
+      localCalendarEvents.splice(idx, 1);
+      return res.json({ success: true, message: 'Event cancelled and removed from calendar.' });
+    }
+    res.status(404).json({ error: 'Event not found.' });
+  });
+
+  // 4c. EMAILS
+  router.get('/emails', (_req: AuthenticatedRequest, res: Response) => {
+    res.json(localEmailInbox);
   });
 
   // 5. DEVICES

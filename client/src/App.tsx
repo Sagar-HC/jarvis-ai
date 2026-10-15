@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { TaskCreator } from './components/TaskCreator';
 import { TaskList } from './components/TaskList';
 import { TaskDetailView } from './components/TaskDetailView';
+import { CalendarView } from './components/CalendarView';
 import { ApprovalsCenter } from './components/ApprovalsCenter';
 import { IntegrationsView } from './components/IntegrationsView';
 import { DevicesView } from './components/DevicesView';
@@ -133,7 +134,11 @@ export const App: React.FC = () => {
               {/* Task Execution Detail & Step Graph */}
               <div className="lg:col-span-7">
                 {selectedTaskId ? (
-                  <TaskDetailView taskId={selectedTaskId} onRefresh={loadData} />
+                  <TaskDetailView
+                    taskId={selectedTaskId}
+                    onRefresh={loadData}
+                    onNavigateTab={(tab) => setActiveTab(tab)}
+                  />
                 ) : (
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-sm">
                     Select a task from the list or issue a goal above to view execution details.
@@ -142,6 +147,11 @@ export const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Calendar & Meetings Tab */}
+        {activeTab === 'calendar' && (
+          <CalendarView />
         )}
 
         {/* Approvals Tab */}
