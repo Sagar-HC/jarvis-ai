@@ -40,7 +40,7 @@ export class IntegrationManager {
   }
 
   public getConnector(providerId: string): IConnector | undefined {
-    return this.connectors.get(providerId);
+    return this.connectors.get(providerId) || this.connectors.get(providerId.toUpperCase()) || this.connectors.get(providerId.toLowerCase());
   }
 
   public getAllConnectors(): IConnector[] {
